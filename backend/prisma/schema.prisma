@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================
+// 지역 (Districts) - 확장 가능
+// ============================================
+model District {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  nameEn      String?
+  code        String   @unique
+  isActive    Boolean  @default(true)
+  
+  events      Event[]
+  dataSources DataSource[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// 행사 (Events)
+// ============================================
+model Event {
+  id          Int      @id @default(autoincrement())
+  
+  title       String
+  description String?
+  
+  startDate   DateTime
+  endDate     DateTime?
+  registrationStartDate DateTime?
+  registrationEndDate   DateTime?
+  
+  location    String?
+  address     String?
+  
+  districtId  Int
+  district    District @relation(fields: [districtId], references: [id])
+  
+  targetAgeMin   Int    @default(0)
+  targetAgeMax   Int    @default(999)
+  targetGroup    String?
+  capacity       Int?
+  
+  isFree      Boolean  @default(true)
+  fee         String?
+  
+  originalUrl String
+  registrationUrl String?
+  imageUrl    String?
+  
+  category    String
+  organizer   String?
+  contact     String?
+  
+  dataSourceId Int?
+  dataSource   DataSource? @relation(fields: [dataSourceId], references: [id])
+  viewCount    Int      @default(0)
+  isActive     Boolean  @default(true)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastSyncedAt DateTime @default(now())
+  
+  @@index([districtId])
+  @@index([startDate])
+  @@index([category])
+  @@index([isFree])
+}
+
+// ============================================
+// 데이터 소스 (Data Sources)
+// ============================================
+model DataSource {
+  id          Int      @id @default(autoincrement())
+  
+  name        String
+  sourceType  String
+  url         String
+  
+  districtId  Int
+  district    District @relation(fields: [districtId], references: [id])
+  
+  config      String?
+  
+  isActive    Boolean  @default(true)
+  lastCollectedAt DateTime?
+  
+  events      Event[]
+  logs        CollectionLog[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([districtId])
+}
+
+// ============================================
+// 수집 로그 (Collection Logs)
+// ============================================
+model CollectionLog {
+  id              Int      @id @default(autoincrement())
+  
+  dataSourceId    Int
+  dataSource      DataSource @relation(fields: [dataSourceId], references: [id])
+  
+  status          String
+  eventsCollected Int      @default(0)
+  eventsAdded     Int      @default(0)
+  eventsUpdated   Int      @default(0)
+  errorMessage    String?
+  
+  startedAt       DateTime
+  completedAt     DateTime?
+  
+  createdAt       DateTime @default(now())
+}
+
+// ============================================
+// 카테고리 (Categories)
+// ============================================
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  nameEn    String?
+  icon      String?
+  order     Int      @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
