@@ -8,8 +8,8 @@ export class EventsService {
 
     async findAll(query: QueryEventDto) {
         const {
-            page = 1,
-            limit = 20,
+            page: rawPage = 1,
+            limit: rawLimit = 20,
             district,
             category,
             dateFrom,
@@ -20,6 +20,10 @@ export class EventsService {
             keyword,
             sortBy = 'date',
         } = query;
+
+        // 문자열로 들어온 page/limit을 숫자로 변환
+        const page = Number(rawPage) || 1;
+        const limit = Number(rawLimit) || 20;
 
         const where: any = {
             isActive: true,

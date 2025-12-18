@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Event } from '@/types';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { ko } from 'date-fns/locale/ko';
+
 
 interface EventCardProps {
     event: Event;

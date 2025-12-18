@@ -21,15 +21,28 @@ export default function Home() {
   async function fetchData() {
     setLoading(true);
     try {
+      console.log('🔍 Fetching data for district:', currentDistrict);
+
       const [eventsRes, categoriesRes] = await Promise.all([
         eventsApi.getAll({ district: currentDistrict, limit: 6, sortBy: 'date' }),
         categoriesApi.getAll(),
       ]);
 
-      setEvents(eventsRes.data.data);
-      setCategories(categoriesRes.data.data);
+      console.log('📊 Events response:', eventsRes);
+      console.log('📊 Categories response:', categoriesRes);
+
+      console.log('📊 Events data:', eventsRes.data);
+      console.log('📊 Categories data:', categoriesRes.data);
+
+      setEvents(eventsRes.data.data || []);
+      setCategories(categoriesRes.data.data || []);
+
+      console.log('✅ Data loaded:', {
+        events: eventsRes.data.data?.length,
+        categories: categoriesRes.data.data?.length
+      });
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error('❌ Failed to fetch data:', error);
     } finally {
       setLoading(false);
     }

@@ -30,7 +30,7 @@ export class DataSourcesService {
             include: { district: true },
         });
 
-        const results = [];
+        const results: Array<{ source: string; status: string; message: string }> = [];
         for (const source of sources) {
             this.logger.log(`수집 시작: ${source.name}`);
             results.push({

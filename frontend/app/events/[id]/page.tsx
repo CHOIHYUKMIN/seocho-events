@@ -3,11 +3,11 @@
 import { use, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Header from '@/components/Header';
-import EventCard from '@/components/Event Card';
+import EventCard from '@/components/EventCard';
 import { eventsApi } from '@/lib/api';
 import { Event } from '@/types';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { ko } from 'date-fns/locale/ko';
 
 export default function EventDetailPage() {
     const params = useParams();

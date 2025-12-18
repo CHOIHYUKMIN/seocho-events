@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    <div id="result"></div>
+    <script>
+        const API_URL = 'http://localhost:3000';
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // Test 1: Events
+                const eventsRes = await fetch(`${API_URL}/events`);
+                const eventsData = await eventsRes.json();
+                
+                // Test 2: Categories
+                const categoriesRes = await fetch(`${API_URL}/categories`);
+                const categoriesData = await categoriesRes.json();
+                
+                // Test 3: Districts
+                const districtsRes = await fetch(`${API_URL}/districts`);
+                const districtsData = await districtsRes.json();
+                
+                resultDiv.innerHTML = `
+                    <h2>✅ API Connection Success!</h2>
+                    <h3>Events: ${eventsData.data?.length || 0}</h3>
+                    <pre>${JSON.stringify(eventsData, null, 2)}</pre>
+                    <h3>Categories: ${categoriesData.data?.length || 0}</h3>
+                    <pre>${JSON.stringify(categoriesData, null, 2)}</pre>
+                    <h3>Districts: ${districtsData.data?.length || 0}</h3>
+                    <pre>${JSON.stringify(districtsData, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h2>❌ API Connection Failed!</h2>
+                    <p>Error: ${error.message}</p>
+                    <p>Make sure backend is running on http://localhost:3000</p>
+                `;
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>
