@@ -20,6 +20,9 @@ export default function Header() {
                         <Link href="/events" className="text-gray-600 hover:text-gray-900 font-medium">
                             전체 행사
                         </Link>
+                        <Link href="/admin/data-sources" className="text-orange-600 hover:text-orange-700 font-medium">
+                            🔧 관리자
+                        </Link>
                     </nav>
                 </div>
             </div>
