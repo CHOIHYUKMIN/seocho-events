@@ -72,52 +72,34 @@ async function main() {
     {
       name: '서울 열린데이터 광장 (서초구)',
       sourceType: 'API',
-      url: 'https://data.seoul.go.kr/api',
+      url: 'http://openapi.seoul.go.kr:8088/545a4e4865687975313231706c5a7146/json/culturalEventInfo/1/100',
       districtId: seocho.id,
+      isActive: true,
       config: JSON.stringify({
-        apiKey: 'YOUR_API_KEY',
-        endpoint: '/dataList/OA-15488/S/1/1000',
+        apiKey: '545a4e4865687975313231706c5a7146',
         districtFilter: '서초구',
+        timeout: 20000,
       }),
     },
     {
-      name: '서초구청 공지사항',
+      name: '서초구청 행사안내',
       sourceType: 'WEB_SCRAPING',
-      url: 'https://www.seocho.go.kr/site/seocho/07/10701020000002015041501.jsp',
+      url: 'https://www.seocho.go.kr/site/seocho/ex/bbs/List.do?cbIdx=59',
       districtId: seocho.id,
+      isActive: true,
       config: JSON.stringify({
         method: 'static',
-        selector: '.board-list tr',
-        titleSelector: '.title',
-        dateSelector: '.date',
-      }),
-    },
-    {
-      name: '서초문화재단',
-      sourceType: 'WEB_SCRAPING',
-      url: 'https://www.seochocf.or.kr',
-      districtId: seocho.id,
-      config: JSON.stringify({
-        method: 'dynamic',
-        waitForSelector: '.event-list',
-      }),
-    },
-    {
-      name: '서초여성가족플라자',
-      sourceType: 'WEB_SCRAPING',
-      url: 'https://women.seocho.go.kr',
-      districtId: seocho.id,
-      config: JSON.stringify({
-        method: 'static',
-      }),
-    },
-    {
-      name: '서초구립도서관',
-      sourceType: 'WEB_SCRAPING',
-      url: 'https://seocholib.or.kr',
-      districtId: seocho.id,
-      config: JSON.stringify({
-        method: 'static',
+        listSelector: 'table.list tbody tr',  // 수정: #content가 아닌 table.list 사용
+        titleSelector: 'td:nth-child(2) a',
+        dateSelector: 'td:nth-child(4)',
+        linkSelector: 'td:nth-child(2) a',
+        crawlDetailPage: true,
+        detailSelectors: {
+          content: '.bbs_contents',
+        },
+        // 첫 페이지만 크롤링 (최신 정보)
+        paginationEnabled: false,
+        timeout: 15000,
       }),
     },
   ];
@@ -129,55 +111,6 @@ async function main() {
   }
 
   console.log('✅ Data sources created');
-
-  // ============================================
-  // 4. 샘플 행사 데이터 (테스트용)
-  // ============================================
-  await prisma.event.create({
-    data: {
-      title: '서초 가족 문화축제',
-      description: '서초구민이 함께하는 겨울 문화축제입니다. 다양한 공연과 체험 프로그램이 준비되어 있습니다.',
-      startDate: new Date('2025-12-25T10:00:00'),
-      endDate: new Date('2025-12-25T18:00:00'),
-      location: '서초구청 앞 광장',
-      address: '서울시 서초구 서초대로 2584',
-      districtId: seocho.id,
-      targetAgeMin: 0,
-      targetAgeMax: 999,
-      targetGroup: JSON.stringify(['가족', '어린이']),
-      isFree: true,
-      originalUrl: 'https://www.seocho.go.kr/event/festival2025',
-      category: '축제',
-      organizer: '서초구청 문화체육과',
-      contact: '02-2155-6743',
-    },
-  });
-
-  await prisma.event.create({
-    data: {
-      title: '어린이 독서 교실',
-      description: '초등학생을 위한 겨울방학 독서 프로그램입니다.',
-      startDate: new Date('2026-01-10T14:00:00'),
-      endDate: new Date('2026-01-10T16:00:00'),
-      registrationStartDate: new Date('2025-12-20T00:00:00'),
-      registrationEndDate: new Date('2026-01-05T23:59:00'),
-      location: '서초구립반포도서관',
-      address: '서울시 서초구 신반포로 201',
-      districtId: seocho.id,
-      targetAgeMin: 7,
-      targetAgeMax: 13,
-      targetGroup: JSON.stringify(['어린이']),
-      capacity: 30,
-      isFree: true,
-      originalUrl: 'https://seocholib.or.kr/program/123',
-      registrationUrl: 'https://seocholib.or.kr/apply/123',
-      category: '교육',
-      organizer: '서초구립반포도서관',
-      contact: '02-535-4142',
-    },
-  });
-
-  console.log('✅ Sample events created');
   console.log('🌱 Seeding completed!');
 }
 
