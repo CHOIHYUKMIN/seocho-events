@@ -95,7 +95,7 @@ async function main() {
         linkSelector: 'td:nth-child(2) a',
         crawlDetailPage: true,
         detailSelectors: {
-          content: '.bbs_contents',
+          content: '.view_contents',  // 수정: 실제 본문 영역 선택자
         },
         // 첫 페이지만 크롤링 (최신 정보)
         paginationEnabled: false,

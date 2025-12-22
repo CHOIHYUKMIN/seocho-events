@@ -338,6 +338,9 @@ export class CrawlerService {
                 const descriptionSelector = config.descriptionSelector || '.description';
                 let description = $el.find(descriptionSelector).first().text().trim();
 
+                // location 기본값
+                let location = source.district.name;
+
                 // 상세 페이지 크롤링
                 if (config.crawlDetailPage && link) {
                     try {
@@ -347,9 +350,9 @@ export class CrawlerService {
                         if (details.title) title = details.title;
                         if (details.description) description = details.description;
                         if (details.startDate) startDate = details.startDate;
-                        if (details.contact) details.contact = details.contact;
+                        if (details.location) location = details.location;
 
-                        this.logger.log(`상세 페이지 크롤링 완료: ${title}`);
+                        this.logger.log(`상세 페이지 크롤링 완료: ${title}${details.startDate ? ` (${details.startDate.toLocaleDateString()})` : ''}`);
 
                         // Rate limiting
                         await this.delay(500);
@@ -367,7 +370,7 @@ export class CrawlerService {
                     title,
                     description: description || undefined,
                     startDate,
-                    location: source.district.name,
+                    location,
                     targetAgeMin: 0,
                     targetAgeMax: 999,
                     isFree: true,
@@ -406,7 +409,31 @@ export class CrawlerService {
                     details.title = $(config.detailSelectors.title).first().text().trim();
                 }
                 if (config.detailSelectors.content) {
-                    details.description = $(config.detailSelectors.content).first().text().trim();
+                    const contentText = $(config.detailSelectors.content).first().text().trim();
+                    details.description = contentText;
+
+                    // 본문에서 실제 행사 일시 추출 (서초구청 형식)
+                    // 예: "❍ 일    시 : 2025. 11. 2.(일) 13:00~21:00"
+                    const eventDateMatch = contentText.match(/(?:일\s*시|일시)\s*:\s*([^\n❍*]+)/);
+                    if (eventDateMatch) {
+                        const eventDateStr = eventDateMatch[1].trim();
+                        this.logger.log(`본문에서 행사 일시 추출: ${eventDateStr}`);
+
+                        // 날짜 파싱 시도
+                        const parsedDate = this.parseDate(eventDateStr);
+                        if (parsedDate) {
+                            details.startDate = parsedDate;
+                            this.logger.log(`파싱된 행사 일시: ${parsedDate.toISOString()}`);
+                        }
+                    }
+
+                    // 본문에서 장소 정보 추출
+                    // 예: "❍ 장    소 : 강남역 일대"
+                    const locationMatch = contentText.match(/(?:장\s*소)\s*:\s*([^\n❍*]+)/);
+                    if (locationMatch) {
+                        details.location = locationMatch[1].trim();
+                        this.logger.log(`본문에서 장소 추출: ${details.location}`);
+                    }
                 }
                 if (config.detailSelectors.department) {
                     details.department = $(config.detailSelectors.department).first().text().trim();
@@ -414,10 +441,7 @@ export class CrawlerService {
                 if (config.detailSelectors.contact) {
                     details.contact = $(config.detailSelectors.contact).first().text().trim();
                 }
-                if (config.detailSelectors.date) {
-                    const dateText = $(config.detailSelectors.date).first().text().trim();
-                    details.startDate = this.parseDate(dateText);
-                }
+                // detailSelectors.date는 이제 본문 파싱으로 대체됨
             }
         } catch (error: any) {
             this.logger.warn(`상세 페이지 크롤링 실패: ${error.message}`);
