@@ -44,7 +44,18 @@ export default function EventCard({ event }: EventCardProps) {
                 <div className="space-y-2 text-sm text-gray-500">
                     <div className="flex items-center gap-2">
                         <span>📅</span>
-                        <span>{formattedDate} {formattedTime}</span>
+                        <span>
+                            {formattedDate}
+                            {event.startTime && (
+                                <span className="ml-1 font-semibold text-blue-600">
+                                    {event.startTime}
+                                    {event.endTime && `~${event.endTime}`}
+                                </span>
+                            )}
+                            {!event.startTime && (
+                                <span className="ml-1">{formattedTime}</span>
+                            )}
+                        </span>
                     </div>
 
                     {event.location && (
