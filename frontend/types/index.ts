@@ -13,6 +13,8 @@ export interface Event {
     description: string | null;
     startDate: string;
     endDate: string | null;
+    startTime: string | null;
+    endTime: string | null;
     registrationStartDate: string | null;
     registrationEndDate: string | null;
     location: string | null;

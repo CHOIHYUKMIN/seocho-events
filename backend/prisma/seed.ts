@@ -89,16 +89,36 @@ async function main() {
       isActive: true,
       config: JSON.stringify({
         method: 'static',
-        listSelector: 'table.list tbody tr',  // 수정: #content가 아닌 table.list 사용
+        listSelector: 'table.list tbody tr',
         titleSelector: 'td:nth-child(2) a',
         dateSelector: 'td:nth-child(4)',
         linkSelector: 'td:nth-child(2) a',
         crawlDetailPage: true,
         detailSelectors: {
-          content: '.view_contents',  // 수정: 실제 본문 영역 선택자
+          content: '.view_contents',
         },
-        // 첫 페이지만 크롤링 (최신 정보)
         paginationEnabled: false,
+        timeout: 15000,
+      }),
+    },
+    {
+      name: '서초구육아종합지원센터',
+      sourceType: 'WEB_SCRAPING',
+      url: 'https://www.scscc.or.kr/care/family_care/appFamily.asp',
+      districtId: seocho.id,
+      isActive: true,
+      config: JSON.stringify({
+        method: 'static',
+        listSelector: 'a.schedule',
+        titleSelector: 'span:last-child',
+        linkSelector: 'a.schedule',
+        crawlDetailPage: true,
+        detailSelectors: {
+          content: '.board-view',
+        },
+        // 달력 형식: 당월 + 다음달 (2개월)
+        calendarMode: true,
+        calendarMonths: 2,
         timeout: 15000,
       }),
     },

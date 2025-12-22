@@ -17,6 +17,8 @@ interface RawEvent {
     description?: string;
     startDate: Date;
     endDate?: Date;
+    startTime?: string;
+    endTime?: string;
     location?: string;
     address?: string;
     targetAgeMin?: number;
@@ -63,6 +65,10 @@ interface CrawlerConfig {
     paginationEnabled?: boolean;
     paginationUrlPattern?: string;  // 예: '&pageIndex={page}'
     paginationMaxPages?: number;
+
+    // 달력 모드 (육아종합지원센터 등)
+    calendarMode?: boolean;
+    calendarMonths?: number;  // 크롤링할 개월 수 (기본: 2개월)
 }
 
 @Injectable()
@@ -240,8 +246,28 @@ export class CrawlerService {
         const events: RawEvent[] = [];
 
         try {
-            // 페이지네이션 지원
-            const urls = this.generatePaginationUrls(source.url, config);
+            let urls: string[] = [];
+
+            // 달력 모드: 당월 + 다음달 URL 생성
+            if (config.calendarMode) {
+                const months = config.calendarMonths || 2;
+                const today = new Date();
+
+                for (let i = 0; i < months; i++) {
+                    const targetDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                    const year = targetDate.getFullYear();
+                    const month = targetDate.getMonth() + 1;
+
+                    // URL에 년월 파라미터 추가
+                    const calendarUrl = `${source.url}${source.url.includes('?') ? '&' : '?'}year=${year}&month=${month}`;
+                    urls.push(calendarUrl);
+                }
+                this.logger.log(`달력 모드: ${months}개월 크롤링 (${urls.length}개 URL)`);
+            } else {
+                // 일반 페이지네이션 지원
+                urls = this.generatePaginationUrls(source.url, config);
+            }
+
             this.logger.log(`크롤링 대상 URL 개수: ${urls.length}`);
 
             for (const url of urls) {
@@ -324,6 +350,16 @@ export class CrawlerService {
                 const dateText = $el.find(dateSelector).first().text().trim();
                 let startDate = this.parseDate(dateText);
 
+                // 육아종합지원센터: href에서 the_day 파라미터 추출
+                if (!startDate && config.listSelector === 'a.schedule') {
+                    const href = $el.attr('href') || '';
+                    const theDayMatch = href.match(/the_day=(\d{4}-\d{2}-\d{2})/);
+                    if (theDayMatch) {
+                        startDate = this.parseDate(theDayMatch[1]);
+                        this.logger.log(`href에서 날짜 추출: ${theDayMatch[1]}`);
+                    }
+                }
+
                 // 링크 추출
                 const linkSelector = config.linkSelector || 'a';
                 let link = $el.find(linkSelector).first().attr('href') || '';
@@ -341,6 +377,10 @@ export class CrawlerService {
                 // location 기본값
                 let location = source.district.name;
 
+                // 시간 정보 변수
+                let startTime: string | undefined;
+                let endTime: string | undefined;
+
                 // 상세 페이지 크롤링
                 if (config.crawlDetailPage && link) {
                     try {
@@ -351,8 +391,10 @@ export class CrawlerService {
                         if (details.description) description = details.description;
                         if (details.startDate) startDate = details.startDate;
                         if (details.location) location = details.location;
+                        if (details.startTime) startTime = details.startTime;
+                        if (details.endTime) endTime = details.endTime;
 
-                        this.logger.log(`상세 페이지 크롤링 완료: ${title}${details.startDate ? ` (${details.startDate.toLocaleDateString()})` : ''}`);
+                        this.logger.log(`상세 페이지 크롤링 완료: ${title}${details.startDate ? ` (${details.startDate.toLocaleDateString()})` : ''}${startTime ? ` ${startTime}` : ''}`);
 
                         // Rate limiting
                         await this.delay(500);
@@ -370,6 +412,8 @@ export class CrawlerService {
                     title,
                     description: description || undefined,
                     startDate,
+                    startTime,
+                    endTime,
                     location,
                     targetAgeMin: 0,
                     targetAgeMax: 999,
@@ -424,6 +468,21 @@ export class CrawlerService {
                         if (parsedDate) {
                             details.startDate = parsedDate;
                             this.logger.log(`파싱된 행사 일시: ${parsedDate.toISOString()}`);
+                        }
+
+                        // 시간 정보 추출 (예: "13:00~21:00", "14:00", "오후 2시~5시")
+                        const timeMatch = eventDateStr.match(/(\d{1,2}):(\d{2})\s*[~-]\s*(\d{1,2}):(\d{2})/);
+                        if (timeMatch) {
+                            details.startTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+                            details.endTime = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}`;
+                            this.logger.log(`시간 추출: ${details.startTime} ~ ${details.endTime}`);
+                        } else {
+                            // 단일 시간만 있는 경우 (예: "14:00")
+                            const singleTimeMatch = eventDateStr.match(/(\d{1,2}):(\d{2})/);
+                            if (singleTimeMatch) {
+                                details.startTime = `${singleTimeMatch[1].padStart(2, '0')}:${singleTimeMatch[2]}`;
+                                this.logger.log(`시작 시간 추출: ${details.startTime}`);
+                            }
                         }
                     }
 

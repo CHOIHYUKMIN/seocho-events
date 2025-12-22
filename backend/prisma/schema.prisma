@@ -38,6 +38,8 @@ model Event {
   
   startDate   DateTime
   endDate     DateTime?
+  startTime   String?      // 시작 시간 (예: "13:00")
+  endTime     String?      // 종료 시간 (예: "21:00")
   registrationStartDate DateTime?
   registrationEndDate   DateTime?
   

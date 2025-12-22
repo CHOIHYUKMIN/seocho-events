@@ -122,8 +122,16 @@ export default function EventDetailPage() {
                                 <div>
                                     <div className="font-semibold text-gray-900">일시</div>
                                     <div className="text-gray-700">
-                                        {format(startDate, 'yyyy년M월 d일 (E) HH:mm', { locale: ko })}
-                                        {endDate && ` ~ ${format(endDate, 'HH:mm', { locale: ko })}`}
+                                        {format(startDate, 'yyyy년 M월 d일 (E)', { locale: ko })}
+                                        {event.startTime && (
+                                            <span className="ml-2 font-semibold text-blue-600">
+                                                {event.startTime}
+                                                {event.endTime && ` ~ ${event.endTime}`}
+                                            </span>
+                                        )}
+                                        {!event.startTime && endDate && (
+                                            <span> ~ {format(endDate, 'HH:mm', { locale: ko })}</span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
