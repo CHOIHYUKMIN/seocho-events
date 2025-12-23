@@ -258,8 +258,9 @@ export class CrawlerService {
                     const year = targetDate.getFullYear();
                     const month = targetDate.getMonth() + 1;
 
-                    // URL에 년월 파라미터 추가
-                    const calendarUrl = `${source.url}${source.url.includes('?') ? '&' : '?'}year=${year}&month=${month}`;
+                    // 육아종합지원센터는 datToday=YYYYMM 형식 사용
+                    const datToday = `${year}${month.toString().padStart(2, '0')}`;
+                    const calendarUrl = `${source.url}${source.url.includes('?') ? '&' : '?'}datToday=${datToday}`;
                     urls.push(calendarUrl);
                 }
                 this.logger.log(`달력 모드: ${months}개월 크롤링 (${urls.length}개 URL)`);
@@ -362,12 +363,28 @@ export class CrawlerService {
 
                 // 링크 추출
                 const linkSelector = config.linkSelector || 'a';
-                let link = $el.find(linkSelector).first().attr('href') || '';
+                let link = '';
+
+                // listSelector와 linkSelector가 같으면 $el 자체가 링크
+                if (linkSelector === config.listSelector) {
+                    link = $el.attr('href') || '';
+                } else {
+                    link = $el.find(linkSelector).first().attr('href') || '';
+                }
 
                 // 상대 경로를 절대 경로로 변환
                 if (link && !link.startsWith('http')) {
                     const baseUrl = new URL(url);
-                    link = new URL(link, baseUrl.origin).toString();
+
+                    // 육아종합지원센터: appFamily_view.asp 링크 처리
+                    if (link.includes('appFamily_view.asp')) {
+                        // 현재 URL의 디렉토리 경로 사용
+                        const basePath = baseUrl.pathname.substring(0, baseUrl.pathname.lastIndexOf('/') + 1);
+                        link = `${baseUrl.origin}${basePath}${link}`;
+                        this.logger.log(`육아센터 링크 변환: ${link}`);
+                    } else {
+                        link = new URL(link, baseUrl.origin).toString();
+                    }
                 }
 
                 // 설명 추출

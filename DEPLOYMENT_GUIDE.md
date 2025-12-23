@@ -1,189 +1,388 @@
-# Vercel + Supabase 배포 가이드 (완전판)
+# 🚀 Firebase 배포 가이드
 
-## ⚠️ 중요: 현재 프로젝트 구조 이해
-
-**현재 프로젝트:**
-```
-seocho-events/
-├── frontend/     # Next.js (프론트엔드)
-└── backend/      # NestJS (백엔드 API 서버)
-```
-
-## 🎯 배포 전략
-
-### ❌ 문제: Vercel은 NestJS를 직접 배포하기 어려움
-
-**Vercel의 제약:**
-- Serverless Functions만 지원
-- NestJS 전체를 그대로 배포 불가능
-- 각 API를 Serverless Function으로 변환 필요 (복잡함)
+## 📋 목차
+1. [사전 준비](#사전-준비)
+2. [Firebase 프로젝트 설정](#firebase-프로젝트-설정)
+3. [Cloud SQL 설정](#cloud-sql-설정)
+4. [Backend 배포 (Cloud Run)](#backend-배포-cloud-run)
+5. [Frontend 배포 (Firebase Hosting)](#frontend-배포-firebase-hosting)
+6. [크롤링 스케줄러 설정](#크롤링-스케줄러-설정)
+7. [환경 변수 설정](#환경-변수-설정)
+8. [비용 최적화](#비용-최적화)
 
 ---
 
-## ✅ 추천 솔루션 #1: Vercel + Railway + Supabase
+## 사전 준비
 
-### 📦 배포 구조
-
-**Frontend (Next.js)**
-- **Vercel** (무료)
-  - https://your-app.vercel.app
-  - 자동 배포
-
-**Backend (NestJS)**
-- **Railway** (무료 $5 크레딧/월)
-  - https://your-api.up.railway.app
-  - NestJS 그대로 배포 가능!
-  - 자동 SSL
-
-**Database**
-- **Supabase** (무료)
-  - PostgreSQL
-  - 500MB
-
-### 💰 비용
-- Frontend: 무료 (Vercel)
-- Backend: 거의 무료 (Railway $5/월 크레딧)
-- Database: 무료 (Supabase)
-
-**총 비용: 무료!** (트래픽 적을 때)
-
----
-
-## ✅ 추천 솔루션 #2: Vercel + Railway (올인원)
-
-### 📦 배포 구조
-
-**Frontend**
-- **Vercel** (무료)
-
-**Backend + Database**
-- **Railway** (무료 $5 크레딧/월)
-  - NestJS 배포
-  - PostgreSQL 제공
-  - 하나의 플랫폼에서 관리
-
-### 💰 비용
-- Frontend: 무료
-- Backend + DB: 거의 무료
-
-**총 비용: 무료!**
-
----
-
-## 🚀 배포 단계 (솔루션 #2 추천)
-
-### Step 1: Railway 설정
-
-1. **Railway 가입**
-   ```
-   https://railway.app
-   GitHub으로 로그인
-   ```
-
-2. **프로젝트 생성**
-   ```
-   New Project → Deploy from GitHub
-   → seocho-events 선택
-   → backend 폴더 선택
-   ```
-
-3. **PostgreSQL 추가**
-   ```
-   Add New → Database → PostgreSQL
-   → 자동으로 DATABASE_URL 생성됨
-   ```
-
-4. **환경변수 설정**
-   ```
-   DATABASE_URL: [자동 생성됨]
-   NODE_ENV: production
-   PORT: 3000
-   ```
-
-5. **배포!**
-   ```
-   Git push → 자동 배포
-   ```
-
-### Step 2: Prisma 마이그레이션
+### 필요한 도구 설치
 
 ```bash
-# 로컬에서 실행
+# Firebase CLI 설치
+npm install -g firebase-tools
+
+# Google Cloud SDK 설치
+# https://cloud.google.com/sdk/docs/install
+
+# Docker 설치 (Cloud Run용)
+# https://docs.docker.com/get-docker/
+```
+
+### 계정 설정
+
+1. **Google Cloud Console**: https://console.cloud.google.com/
+2. **Firebase Console**: https://console.firebase.google.com/
+
+---
+
+## Firebase 프로젝트 설정
+
+### 1. Firebase 프로젝트 생성
+
+```bash
+# Firebase 로그인
+firebase login
+
+# 프로젝트 초기화
+cd d:\DEVELOP\WORKSPACE\seocho-events
+firebase init
+```
+
+**선택 항목:**
+- ✅ Hosting
+- ✅ Functions (나중에 크롤링용)
+
+### 2. Google Cloud 프로젝트 연결
+
+Firebase 프로젝트는 자동으로 Google Cloud 프로젝트를 생성합니다.
+프로젝트 ID를 메모해두세요.
+
+---
+
+## Cloud SQL 설정
+
+### 1. Cloud SQL 인스턴스 생성
+
+```bash
+# Google Cloud Console에서:
+# 1. SQL > 인스턴스 만들기
+# 2. PostgreSQL 선택
+# 3. 인스턴스 ID: seocho-events-db
+# 4. 비밀번호 설정
+# 5. 리전: asia-northeast3 (서울)
+# 6. 머신 유형: 공유 코어 (db-f1-micro) - 가장 저렴
+```
+
+### 2. 데이터베이스 생성
+
+```sql
+-- Cloud SQL 콘솔에서 실행
+CREATE DATABASE seocho_events;
+```
+
+### 3. 연결 정보 확인
+
+```
+호스트: [INSTANCE_CONNECTION_NAME]
+예: project-id:asia-northeast3:seocho-events-db
+```
+
+---
+
+## Backend 배포 (Cloud Run)
+
+### 1. Dockerfile 생성
+
+```dockerfile
+# backend/Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Dependencies 복사 및 설치
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci --only=production
+RUN npx prisma generate
+
+# 소스 코드 복사
+COPY . .
+
+# 빌드
+RUN npm run build
+
+# 포트 노출
+EXPOSE 8080
+
+# 실행
+CMD ["npm", "run", "start:prod"]
+```
+
+### 2. 환경 변수 파일 준비
+
+```bash
+# backend/.env.production (Git에 커밋하지 말 것!)
+DATABASE_URL="postgresql://USER:PASSWORD@/seocho_events?host=/cloudsql/INSTANCE_CONNECTION_NAME"
+PORT=8080
+NODE_ENV=production
+```
+
+### 3. Cloud Run 배포 스크립트
+
+```bash
+# backend/deploy.sh
+#!/bin/bash
+
+PROJECT_ID="your-project-id"
+REGION="asia-northeast3"
+SERVICE_NAME="seocho-events-api"
+
+# Docker 이미지 빌드
+gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME
+
+# Cloud Run 배포
+gcloud run deploy $SERVICE_NAME \
+  --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+  --platform managed \
+  --region $REGION \
+  --allow-unauthenticated \
+  --add-cloudsql-instances INSTANCE_CONNECTION_NAME \
+  --set-env-vars DATABASE_URL="YOUR_DATABASE_URL"
+```
+
+### 4. Prisma 마이그레이션
+
+```bash
+# 로컬에서 Cloud SQL에 연결하여 마이그레이션
+# Cloud SQL Proxy 사용
+./cloud_sql_proxy -instances=INSTANCE_CONNECTION_NAME=tcp:5432
+
+# 다른 터미널에서
 cd backend
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/seocho_events" npx prisma migrate deploy
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/seocho_events" npx prisma db seed
+```
 
-# schema.prisma 수정
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+---
+
+## Frontend 배포 (Firebase Hosting)
+
+### 1. Next.js 설정 수정
+
+```javascript
+// frontend/next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'export',  // Static export
+  // 또는 Firebase functions 사용 시 주석 처리
+  
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+  },
+};
+
+module.exports = nextConfig;
+```
+
+### 2. Firebase 설정
+
+```json
+// firebase.json
+{
+  "hosting": {
+    "public": "frontend/out",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
 }
-
-# 마이그레이션 생성
-npx prisma migrate dev --name init
-
-# Railway에 배포 (자동으로 migrate 실행)
-git add .
-git commit -m "PostgreSQL migration"
-git push
 ```
 
-### Step 3: Vercel 설정
+### 3. 배포 스크립트
 
-1. **Vercel 가입**
-   ```
-   https://vercel.com
-   GitHub으로 로그인
-   ```
+```bash
+# frontend/deploy.sh
+#!/bin/bash
 
-2. **프로젝트 생성**
-   ```
-   Import Project
-   → seocho-events
-   → frontend 폴더 선택
-   ```
+# 환경 변수 설정
+export NEXT_PUBLIC_API_URL="https://your-cloud-run-url"
 
-3. **환경변수 설정**
-   ```
-   NEXT_PUBLIC_API_URL: https://your-api.up.railway.app
-   ```
+# 빌드
+npm run build
 
-4. **배포!**
-   ```
-   자동 배포 시작
-   ```
-
----
-
-## 📊 최종 구조
-
-```
-사용자
-  ↓
-Vercel (Frontend)
-https://seocho-events.vercel.app
-  ↓ API 호출
-Railway (Backend + DB)
-https://seocho-events-api.up.railway.app
+# Firebase 배포
+firebase deploy --only hosting
 ```
 
 ---
 
-## 🎯 결론
+## 크롤링 스케줄러 설정
 
-**네, Vercel로 호스팅 가능합니다!**
+### 1. Cloud Function 생성
 
-**정확한 구조:**
-- **프론트엔드**: Vercel ✅
-- **백엔드**: Railway (Vercel은 NestJS 직접 배포 어려움)
-- **데이터베이스**: Railway PostgreSQL 또는 Supabase
+```typescript
+// functions/src/index.ts
+import * as functions from 'firebase-functions';
+import axios from 'axios';
 
-**모두 무료입니다!** (트래픽 적을 때)
+export const scheduledCrawler = functions
+  .region('asia-northeast3')
+  .pubsub.schedule('0 2 * * *')  // 매일 새벽 2시
+  .timeZone('Asia/Seoul')
+  .onRun(async (context) => {
+    const API_URL = process.env.API_URL || 'https://your-cloud-run-url';
+    
+    try {
+      const response = await axios.post(`${API_URL}/data-sources/collect`);
+      console.log('크롤링 완료:', response.data);
+      return null;
+    } catch (error) {
+      console.error('크롤링 실패:', error);
+      throw error;
+    }
+  });
+```
+
+### 2. Cloud Functions 배포
+
+```bash
+cd functions
+npm install
+firebase deploy --only functions
+```
 
 ---
 
-## 🔥 지금 바로 배포할까요?
+## 환경 변수 설정
 
-1. Railway 계정만 만들면 됩니다
-2. GitHub 연동하면 자동 배포
-3. 5분이면 완료!
+### Backend (Cloud Run)
 
-**진행하시겠습니까?**
+```bash
+# Secret Manager 사용 권장
+gcloud secrets create DATABASE_URL --data-file=database-url.txt
+
+# Cloud Run에서 시크릿 사용
+gcloud run services update seocho-events-api \
+  --update-secrets=DATABASE_URL=DATABASE_URL:latest
+```
+
+### Frontend (Firebase Hosting)
+
+```bash
+# .env.production
+NEXT_PUBLIC_API_URL=https://seocho-events-api-xxxxx-an.a.run.app
+```
+
+---
+
+## 비용 최적화
+
+### 📊 예상 월 비용 (트래픽 1000명/일 기준)
+
+| 서비스 | 비용 |
+|--------|------|
+| Firebase Hosting | 무료 (10GB/월) |
+| Cloud Run | ~$3 (요청 기반) |
+| Cloud SQL | $7-10 (db-f1-micro) |
+| Cloud Functions | 무료 (200만 호출/월) |
+| **총계** | **~$10-13/월** |
+
+### 💰 절약 팁
+
+1. **Cloud SQL 최적화**
+   ```bash
+   # 개발 환경에서만 사용하고 자동 정지
+   gcloud sql instances patch seocho-events-db \
+     --activation-policy=ALWAYS  # 또는 NEVER (수동 시작)
+   ```
+
+2. **Cloud Run 최소 인스턴스 0**
+   ```bash
+   # 요청이 없을 때 완전히 종료
+   --min-instances=0
+   ```
+
+3. **무료 티어 활용**
+   - Firebase: 10GB 호스팅
+   - Cloud Run: 200만 요청/월
+   - Cloud Functions: 200만 호출/월
+
+---
+
+## 🔍 배포 체크리스트
+
+### Backend
+- [ ] Cloud SQL 인스턴스 생성
+- [ ] 데이터베이스 생성
+- [ ] Prisma 마이그레이션 실행
+- [ ] Seed 데이터 삽입
+- [ ] Dockerfile 작성
+- [ ] Cloud Run 배포
+- [ ] 환경 변수 설정
+- [ ] API 테스트
+
+### Frontend
+- [ ] Next.js static export 설정
+- [ ] API URL 환경 변수 설정
+- [ ] Firebase 프로젝트 초기화
+- [ ] 빌드 테스트
+- [ ] Firebase Hosting 배포
+- [ ] 도메인 연결 (선택)
+
+### 크롤링
+- [ ] Cloud Functions 작성
+- [ ] Cloud Scheduler 설정
+- [ ] 크롤링 테스트
+- [ ] 로그 모니터링
+
+---
+
+## 🐛 트러블슈팅
+
+### Cloud SQL 연결 오류
+
+```bash
+# Cloud SQL Proxy 사용
+./cloud_sql_proxy -instances=INSTANCE_CONNECTION_NAME=tcp:5432
+```
+
+### Prisma 마이그레이션 실패
+
+```bash
+# 스키마 강제 동기화 (개발 환경만!)
+npx prisma db push
+```
+
+### Cloud Run 메모리 부족
+
+```bash
+# 메모리 증가
+gcloud run services update seocho-events-api --memory=512Mi
+```
+
+---
+
+## 📚 참고 자료
+
+- [Firebase Documentation](https://firebase.google.com/docs)
+- [Cloud Run Documentation](https://cloud.google.com/run/docs)
+- [Cloud SQL Documentation](https://cloud.google.com/sql/docs)
+- [Prisma with PostgreSQL](https://www.prisma.io/docs/concepts/database-connectors/postgresql)
+- [Next.js Deployment](https://nextjs.org/docs/deployment)
+
+---
+
+## 🎯 다음 단계
+
+1. **도메인 연결**: Firebase Hosting에 커스텀 도메인 추가
+2. **모니터링**: Cloud Monitoring으로 성능 추적
+3. **백업**: Cloud SQL 자동 백업 설정
+4. **CDN**: Firebase CDN 자동 활성화
+5. **보안**: API Key 관리, CORS 설정
