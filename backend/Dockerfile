@@ -42,10 +42,9 @@ COPY --from=builder /app/dist ./dist
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=8080
 
-# Expose port
-EXPOSE 8080
+# Expose port (Render will set PORT env var)
+EXPOSE ${PORT:-3000}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
