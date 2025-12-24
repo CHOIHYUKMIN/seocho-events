@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import EventCard from '@/components/EventCard';
@@ -11,7 +11,7 @@ import { useLocation } from '@/lib/LocationContext';
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
-export default function EventsPage() {
+function EventsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { currentDistrict } = useLocation();
@@ -312,5 +312,32 @@ export default function EventsPage() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function EventsPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50">
+                <Header />
+                <main className="container mx-auto px-4 py-8">
+                    <div className="mb-6">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">전체 행사</h1>
+                        <p className="text-gray-600">로딩 중...</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="bg-white rounded-lg shadow-md p-6 h-64 animate-pulse">
+                                <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
+                                <div className="h-6 bg-gray-200 rounded w-full mb-3"></div>
+                                <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                            </div>
+                        ))}
+                    </div>
+                </main>
+            </div>
+        }>
+            <EventsPageContent />
+        </Suspense>
     );
 }

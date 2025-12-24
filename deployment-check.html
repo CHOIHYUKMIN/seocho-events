@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서초 이벤트 - 배포 상태 체크</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+        
+        .check-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .check-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: auto;
+        }
+        
+        .status.checking {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .status.success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status.error {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .endpoint {
+            margin: 10px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .endpoint-url {
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+        
+        .endpoint-result {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+        
+        .result-icon {
+            font-size: 20px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .instructions {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 30px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .instructions h3 {
+            color: #2196F3;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            margin-left: 20px;
+            color: #555;
+            line-height: 1.8;
+        }
+        
+        .instructions a {
+            color: #2196F3;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .instructions a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 서초 이벤트 배포 상태</h1>
+        <p class="subtitle">Backend, Frontend, Database 상태를 실시간으로 확인합니다</p>
+        
+        <!-- Backend Section -->
+        <div class="check-section" id="backend-section">
+            <h2>
+                <span>⚙️ Backend (Render)</span>
+                <span class="status checking" id="backend-status">확인 중...</span>
+            </h2>
+            
+            <div class="endpoint">
+                <span class="endpoint-url">GET /health</span>
+                <div class="endpoint-result" id="health-result">
+                    <span class="loading"></span>
+                    <span>응답 대기 중... (Cold Start는 최대 60초 소요될 수 있습니다)</span>
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="endpoint-url">GET /events</span>
+                <div class="endpoint-result" id="events-result">
+                    <span class="loading"></span>
+                    <span>대기 중...</span>
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="endpoint-url">GET /categories</span>
+                <div class="endpoint-result" id="categories-result">
+                    <span class="loading"></span>
+                    <span>대기 중...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Frontend Section -->
+        <div class="check-section" id="frontend-section">
+            <h2>
+                <span>🌐 Frontend (Vercel)</span>
+                <span class="status checking" id="frontend-status">확인 중...</span>
+            </h2>
+            
+            <div class="endpoint">
+                <span class="endpoint-url">프로덕션 URL</span>
+                <div class="endpoint-result" id="frontend-result">
+                    <span class="loading"></span>
+                    <span>URL을 확인하는 중...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Database Section -->
+        <div class="check-section" id="database-section">
+            <h2>
+                <span>🗄️ Database (Neon PostgreSQL)</span>
+                <span class="status checking" id="database-status">확인 중...</span>
+            </h2>
+            
+            <div class="endpoint">
+                <span class="endpoint-url">연결 상태</span>
+                <div class="endpoint-result" id="database-result">
+                    <span class="loading"></span>
+                    <span>Backend를 통해 확인 중...</span>
+                </div>
+            </div>
+        </div>
+        
+        <button onclick="location.reload()">🔄 다시 확인</button>
+        
+        <div class="instructions">
+            <h3>📌 수동 확인 방법</h3>
+            <ul>
+                <li><strong>Render:</strong> <a href="https://dashboard.render.com/" target="_blank">dashboard.render.com</a>에서 배포 로그 확인</li>
+                <li><strong>Vercel:</strong> <a href="https://vercel.com/dashboard" target="_blank">vercel.com/dashboard</a>에서 프로덕션 URL 확인</li>
+                <li><strong>Neon:</strong> <a href="https://console.neon.tech/" target="_blank">console.neon.tech</a>에서 DB 상태 확인</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        const BACKEND_URL = 'https://seocho-events.onrender.com';
+        const FRONTEND_URLS = [
+            'https://seocho-events.vercel.app',
+            'https://seocho-events-frontend.vercel.app',
+            'https://seocho-events-choihyukmin.vercel.app'
+        ];
+        
+        let backendOk = false;
+        let frontendOk = false;
+        let databaseOk = false;
+        
+        async function checkBackend() {
+            const endpoints = [
+                { path: '/health', id: 'health-result' },
+                { path: '/events', id: 'events-result' },
+                { path: '/categories', id: 'categories-result' }
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${BACKEND_URL}${endpoint.path}`, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    
+                    const resultEl = document.getElementById(endpoint.id);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        resultEl.innerHTML = `<span class="result-icon">✅</span><span>성공 (${response.status}) - ${JSON.stringify(data).substring(0, 50)}...</span>`;
+                        backendOk = true;
+                        
+                        if (endpoint.path === '/events' && data.data) {
+                            databaseOk = true;
+                            document.getElementById('database-result').innerHTML = `<span class="result-icon">✅</span><span>연결 성공 - ${data.data.length}개 이벤트 조회됨</span>`;
+                            document.getElementById('database-status').textContent = '정상';
+                            document.getElementById('database-status').className = 'status success';
+                        }
+                    } else {
+                        resultEl.innerHTML = `<span class="result-icon">❌</span><span>실패 (${response.status})</span>`;
+                    }
+                } catch (error) {
+                    document.getElementById(endpoint.id).innerHTML = `<span class="result-icon">❌</span><span>연결 실패: ${error.message}</span>`;
+                }
+            }
+            
+            if (backendOk) {
+                document.getElementById('backend-status').textContent = '정상';
+                document.getElementById('backend-status').className = 'status success';
+            } else {
+                document.getElementById('backend-status').textContent = '오류';
+                document.getElementById('backend-status').className = 'status error';
+            }
+        }
+        
+        async function checkFrontend() {
+            for (const url of FRONTEND_URLS) {
+                try {
+                    const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
+                    document.getElementById('frontend-result').innerHTML = `<span class="result-icon">✅</span><span>배포됨 - <a href="${url}" target="_blank">${url}</a></span>`;
+                    document.getElementById('frontend-status').textContent = '정상';
+                    document.getElementById('frontend-status').className = 'status success';
+                    frontendOk = true;
+                    return;
+                } catch (error) {
+                    continue;
+                }
+            }
+            
+            document.getElementById('frontend-result').innerHTML = `<span class="result-icon">❓</span><span>URL을 찾을 수 없습니다. <a href="https://vercel.com/dashboard" target="_blank">Vercel 대시보드</a>에서 확인하세요.</span>`;
+            document.getElementById('frontend-status').textContent = '확인 필요';
+            document.getElementById('frontend-status').className = 'status error';
+        }
+        
+        // 페이지 로드 시 체크 시작
+        window.addEventListener('load', () => {
+            // Backend는 Cold Start를 고려하여 여유있게 체크
+            setTimeout(checkBackend, 2000);
+            
+            // Frontend는 즉시 체크
+            checkFrontend();
+        });
+    </script>
+</body>
+</html>
