@@ -1,23 +1,27 @@
 -- CreateTable
 CREATE TABLE "District" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "nameEn" TEXT,
     "code" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "District_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Event" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
-    "startDate" DATETIME NOT NULL,
-    "endDate" DATETIME,
-    "registrationStartDate" DATETIME,
-    "registrationEndDate" DATETIME,
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3),
+    "startTime" TEXT,
+    "endTime" TEXT,
+    "registrationStartDate" TIMESTAMP(3),
+    "registrationEndDate" TIMESTAMP(3),
     "location" TEXT,
     "address" TEXT,
     "districtId" INTEGER NOT NULL,
@@ -36,52 +40,56 @@ CREATE TABLE "Event" (
     "dataSourceId" INTEGER,
     "viewCount" INTEGER NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "lastSyncedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "Event_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "District" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "Event_dataSourceId_fkey" FOREIGN KEY ("dataSourceId") REFERENCES "DataSource" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "lastSyncedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Event_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "DataSource" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "sourceType" TEXT NOT NULL,
     "url" TEXT NOT NULL,
     "districtId" INTEGER NOT NULL,
     "config" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "lastCollectedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "DataSource_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "District" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "lastCollectedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "DataSource_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "CollectionLog" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "dataSourceId" INTEGER NOT NULL,
     "status" TEXT NOT NULL,
     "eventsCollected" INTEGER NOT NULL DEFAULT 0,
     "eventsAdded" INTEGER NOT NULL DEFAULT 0,
     "eventsUpdated" INTEGER NOT NULL DEFAULT 0,
     "errorMessage" TEXT,
-    "startedAt" DATETIME NOT NULL,
-    "completedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "CollectionLog_dataSourceId_fkey" FOREIGN KEY ("dataSourceId") REFERENCES "DataSource" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "startedAt" TIMESTAMP(3) NOT NULL,
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CollectionLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Category" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "nameEn" TEXT,
     "icon" TEXT,
     "order" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -107,3 +115,15 @@ CREATE INDEX "DataSource_districtId_idx" ON "DataSource"("districtId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
+
+-- AddForeignKey
+ALTER TABLE "Event" ADD CONSTRAINT "Event_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "District"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Event" ADD CONSTRAINT "Event_dataSourceId_fkey" FOREIGN KEY ("dataSourceId") REFERENCES "DataSource"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "DataSource" ADD CONSTRAINT "DataSource_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "District"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CollectionLog" ADD CONSTRAINT "CollectionLog_dataSourceId_fkey" FOREIGN KEY ("dataSourceId") REFERENCES "DataSource"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
